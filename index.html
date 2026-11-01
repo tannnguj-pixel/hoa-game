@@ -719,6 +719,43 @@ bagOpen=craftOpen=statsOpen=adminOpen=false;
 ["bag","craft","statistics","admin"].forEach(id=>document.getElementById(id).style.display="none");
 }
 
+
+// Discord OAuth2 Authorization Code + PKCE; no Client Secret is placed in this HTML.
+const DISCORD_CLIENT_ID="1566430021512339577";
+const DISCORD_REDIRECT_URI="https://tannnguj-pixel.github.io/hoa-game/";
+function escapeHtml(value){return String(value).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+function base64Url(bytes){return btoa(String.fromCharCode(...new Uint8Array(bytes))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/g,"");}
+async function startDiscordLogin(){
+ const status=document.getElementById("discordLoginStatus");
+ try{
+  const verifier=base64Url(crypto.getRandomValues(new Uint8Array(32)));
+  const challenge=base64Url(await crypto.subtle.digest("SHA-256",new TextEncoder().encode(verifier)));
+  const state=base64Url(crypto.getRandomValues(new Uint8Array(24)));
+  sessionStorage.setItem("hornex_discord_pkce_verifier",verifier);sessionStorage.setItem("hornex_discord_oauth_state",state);
+  const url=new URL("https://discord.com/oauth2/authorize");
+  Object.entries({client_id:DISCORD_CLIENT_ID,response_type:"code",redirect_uri:DISCORD_REDIRECT_URI,scope:"identify",state,code_challenge:challenge,code_challenge_method:"S256"}).forEach(([k,v])=>url.searchParams.set(k,v));
+  location.assign(url.toString());
+ }catch(err){if(status)status.textContent="Không thể bắt đầu đăng nhập. Hãy tải lại trang và thử lại.";console.error(err);}
+}
+async function handleDiscordOAuthCallback(){
+ const params=new URLSearchParams(location.search),code=params.get("code");if(!code)return;
+ const state=params.get("state"),savedState=sessionStorage.getItem("hornex_discord_oauth_state"),verifier=sessionStorage.getItem("hornex_discord_pkce_verifier");
+ history.replaceState({},document.title,location.pathname+location.hash);
+ sessionStorage.removeItem("hornex_discord_oauth_state");sessionStorage.removeItem("hornex_discord_pkce_verifier");
+ if(!state||state!==savedState||!verifier){console.warn("Discord OAuth state mismatch or missing PKCE verifier.");return;}
+ try{
+  const body=new URLSearchParams({client_id:DISCORD_CLIENT_ID,grant_type:"authorization_code",code,redirect_uri:DISCORD_REDIRECT_URI,code_verifier:verifier});
+  const tr=await fetch("https://discord.com/api/oauth2/token",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body});const td=await tr.json();
+  if(!tr.ok||!td.access_token)throw new Error(td.error_description||td.error||"Token exchange failed");
+  const ur=await fetch("https://discord.com/api/users/@me",{headers:{Authorization:"Bearer "+td.access_token}});const user=await ur.json();
+  if(!ur.ok||!user.id)throw new Error("Could not load Discord profile");
+  localStorage.setItem("hornex_discord_user_v1",JSON.stringify({id:user.id,username:user.username,global_name:user.global_name||null,avatar:user.avatar||null}));
+  sessionStorage.setItem("hornex_discord_token_v1",td.access_token);
+  const name=user.global_name||user.username,input=document.getElementById("playerNameInput");if(input&&!input.value.trim())input.value=name;
+  const status=document.getElementById("lobbyStatus");if(status)status.textContent="Đã đăng nhập Discord: "+name;
+ }catch(err){console.error("Discord OAuth error:",err);const status=document.getElementById("lobbyStatus");if(status)status.textContent="Đăng nhập chưa hoàn tất. Kiểm tra Redirect URL/OAuth2 rồi thử lại.";}
+}
+
 function enterGame(){
  const name=document.getElementById("playerNameInput").value.trim();
  const status=document.getElementById("lobbyStatus");
@@ -742,7 +779,10 @@ function showMenuDialog(which){
  const title=document.getElementById("menuDialogTitle"),content=document.getElementById("menuDialogContent");
  if(which==="account"){
   title.textContent="👤 Tài khoản";
-  content.innerHTML="<p>Đăng nhập Discord sẽ được bổ sung sau.</p><button type=\"button\" disabled style=\"width:100%;padding:10px;opacity:.7\">Đăng nhập Discord (sắp có)</button>";
+  const discordUser=JSON.parse(localStorage.getItem("hornex_discord_user_v1")||"null");
+  content.innerHTML=(discordUser?'<p>Đã đăng nhập Discord với tên <b>'+escapeHtml(discordUser.global_name||discordUser.username||"người chơi")+'</b>.</p><button type="button" id="discordLoginButton" style="width:100%;padding:10px">Đăng nhập lại Discord</button><button type="button" id="discordLogoutButton" style="width:100%;padding:10px;margin-top:8px">Đăng xuất Discord</button>':'<p>Liên kết tài khoản Discord với Hornex.</p><button type="button" id="discordLoginButton" style="width:100%;padding:10px;background:#5865F2;color:white;border:0;border-radius:8px;cursor:pointer">Đăng nhập Discord</button>')+'<p id="discordLoginStatus" style="font-size:13px;overflow-wrap:anywhere"></p>';
+  document.getElementById("discordLoginButton").addEventListener("click",startDiscordLogin);
+  const logoutButton=document.getElementById("discordLogoutButton");if(logoutButton)logoutButton.addEventListener("click",()=>{localStorage.removeItem("hornex_discord_user_v1");sessionStorage.removeItem("hornex_discord_token_v1");showMenuDialog("account");});
  }else if(which==="settings"){
   title.textContent="⚙️ Cài đặt";
   content.innerHTML='<p><b>Kiểu di chuyển</b></p><select id="movementModeSelect" style="width:100%;padding:10px;border-radius:8px;margin-bottom:14px"><option value="wasd">WASD / phím mũi tên</option><option value="mouse">Chuột tự động</option></select><p id="movementModeHint" style="font-size:13px">Dùng WASD hoặc phím mũi tên để di chuyển.</p><hr><p>Điều chỉnh mức thu phóng màn hình:</p><input id="lobbyZoom" type="range" min="0.5" max="1.5" step="0.05" value="1" style="width:100%"><p id="lobbyZoomValue">1.00×</p>';
@@ -1361,6 +1401,7 @@ draw();
 requestAnimationFrame(loop);
 }
 
+handleDiscordOAuthCallback();
 generateMaze();
 // Bảo đảm vị trí khởi đầu nằm trong ô trống theo đúng hệ tọa độ bản đồ.
 if (circleHitsWall(player.x, player.y, player.r, true)) {
