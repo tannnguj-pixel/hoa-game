@@ -1,0 +1,1385 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Game Arena</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;overflow:hidden;background:#397a42;color:white;font-family:Arial;user-select:none}
+#lobby{position:fixed;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at center,#3e8c4c 0%,#173d28 72%,#10271c 100%);padding:18px}
+.lobby-card{width:min(560px,96vw);max-height:94vh;overflow:auto;background:rgba(15,34,24,.94);border:3px solid #a4ce86;border-radius:18px;padding:24px;box-shadow:0 18px 55px #0009;text-align:center}
+.lobby-title{font-size:clamp(28px,6vw,44px);font-weight:900;color:#ffe66a;text-shadow:2px 3px #274b2d;margin:0 0 5px}
+.lobby-sub{color:#d3e8cc;margin:0 0 18px;font-size:13px}
+.lobby-fields{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:12px}
+.lobby-fields input{width:100%;min-width:0;padding:11px;border-radius:8px;border:1px solid #9dbb8c;background:#eaf4e5;color:#203522;font-size:14px}
+.lobby-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:12px}
+.lobby-btn{min-height:54px;border:2px solid #a4ce86;border-radius:10px;background:linear-gradient(#477c45,#2c5935);color:white;font-weight:bold;font-size:14px;padding:10px 6px;cursor:pointer}
+.lobby-btn:hover{filter:brightness(1.18);transform:translateY(-1px)}
+.lobby-btn.play{grid-column:1/-1;background:linear-gradient(#e4bb42,#a97a1e);border-color:#ffe88a;color:#252512;font-size:18px;min-height:58px}
+#lobbyStatus{min-height:18px;color:#ffe88a;font-size:12px;margin-top:8px}
+#menuDialog{display:none;position:fixed;inset:0;z-index:25;background:#0009;align-items:center;justify-content:center;padding:15px}
+.menu-dialog-card{width:min(420px,94vw);background:#173326;border:2px solid #a4ce86;border-radius:12px;padding:18px;text-align:left;box-shadow:0 12px 40px #0009}
+.menu-dialog-card h2{margin:0 0 12px;color:#ffe66a}
+.menu-dialog-card p{line-height:1.5;font-size:13px}
+.menu-dialog-card .dialog-actions{text-align:right;margin-top:12px}
+canvas{display:block}
+.panel{position:fixed;background:rgba(20,37,30,.94);border:2px solid #789b75;border-radius:10px;padding:12px;z-index:3;box-shadow:0 4px 10px #0005}
+#leader{top:10px;right:10px;min-width:160px}
+#help{position:fixed;bottom:85px;left:50%;transform:translateX(-50%);background:#14251de8;padding:8px 14px;border-radius:8px;font-size:12px;white-space:nowrap;pointer-events:none;border:1px solid #789b75}
+#equipment{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);display:flex;gap:6px;z-index:3}
+.slot{width:58px;height:58px;background:#263e35;border:2px solid #789b75;border-radius:8px;text-align:center;padding:4px;font-size:11px;cursor:pointer}
+.slot.active{border:3px solid #ffe66a;transform:scale(1.05)}
+.window-pro{display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);border-radius:8px;padding:15px;z-index:30;box-shadow:0 10px 30px #000b;color:white}
+#bag{width:min(760px,94vw);max-height:86vh;overflow:hidden;background:#18251f;border:2px solid #8ba58a;border-radius:10px;padding:12px}
+#bag .header-bar{padding:3px 4px 9px;border-bottom:1px solid #526b57}
+#bagLayout{display:grid;grid-template-columns:minmax(0,1fr) 205px;gap:10px;margin-top:10px;min-height:0}
+#bagSections{max-height:62vh;overflow-y:auto;padding:5px;background:#101a15;border:1px solid #405747;border-radius:6px}
+.rarity-section{margin-bottom:12px;padding:7px;border:1px solid #4c6250;border-radius:5px;background:#1d2b22}
+.rarity-title{font-size:12px;font-weight:bold;padding:4px 7px;margin:-1px -1px 7px;border-left:4px solid #aaa;background:#293b2e}
+.rarity-items{display:grid;grid-template-columns:repeat(auto-fill,minmax(54px,1fr));gap:6px}
+#bag .grid-item{width:100%;height:58px;background:#35483a;border-radius:4px}
+#bag .grid-item.selected{outline:2px solid #ffe66a;outline-offset:1px}
+#bagDetails{background:#101a15;border:1px solid #405747;border-radius:6px;padding:10px;min-height:180px}
+#bagDetails .detail-icon{font-size:38px;text-align:center;margin:8px}
+#bagDetails button{width:100%;margin:5px 0}
+#raritySummary{grid-column:1/-1;margin-top:0}
+@media(max-width:560px){#bagLayout{grid-template-columns:1fr}#bagSections{max-height:42vh}#bagDetails{min-height:120px}#bag{max-height:92vh}}
+#craft{width:min(475px,94vw);height:min(500px,92vh);background:#d99d5d;border:2px solid #a67538;border-radius:0;padding:10px;overflow:hidden;color:#fff;text-shadow:1px 1px #382719}#craft .header-bar{justify-content:center;font-size:16px;margin:0 0 4px;position:relative}#craft .header-bar .close-btn{position:absolute;right:0;top:0}#craft .craft-top{display:grid;grid-template-columns:1fr 100px;gap:12px;align-items:center;margin:8px 0 5px}#craft .craft-slots{height:158px;position:relative;display:block;margin:0}#craft .craft-slot{position:absolute;width:46px;height:46px;border:0;border-radius:2px;background:#ad7d4a;color:#fff;font-size:18px}#craft .craft-slot:nth-child(1){left:calc(50% - 23px);top:0}#craft .craft-slot:nth-child(2){left:calc(50% - 88px);top:40px}#craft .craft-slot:nth-child(3){left:calc(50% + 42px);top:40px}#craft .craft-slot:nth-child(4){left:calc(50% - 63px);top:105px}#craft .craft-slot:nth-child(5){left:calc(50% + 17px);top:105px}#craft .craft-action{margin:0;text-align:center}#craft .craft-btn{background:#999;border:2px solid #666;color:white;padding:7px 14px}#craftBag{height: min(230px,34vh);max-height:none;grid-template-columns:repeat(9,minmax(0,1fr));gap:5px;background:transparent;padding:2px;overflow:auto}#craftBag .grid-item{width:auto;height:46px;background:#ad7d4a!important;border:0;border-radius:2px}#craftBag .grid-item .name{display:none}#craftBag .grid-item .icon{font-size:20px}#craftBag .grid-item .count{font-size:10px}#craft .craft-help{text-align:center;font-size:11px;line-height:1.25;margin:3px 0 7px;text-shadow:1px 1px #382719}#craft .craft-require{font-weight:bold;font-size:11px;margin:5px 0 2px}#craft .craft-side{font-size:11px;text-align:center}#craft .craft-rate{font-size:10px;margin-top:3px}
+#statistics{width:440px;background:#e1c855;border:4px solid #b89f28}
+#admin{background:#14251df5;border:2px solid #a5c69b;width:min(460px,92vw);max-height:85vh;overflow:auto}
+.header-bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-weight:bold;font-size:18px}
+.close-btn{background:#e74c3c;border:0;color:white;width:26px;height:26px;border-radius:4px;cursor:pointer}
+.grid-container{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;max-height:280px;overflow-y:auto;padding:5px;background:#0002;border-radius:6px}
+.grid-item{position:relative;width:54px;height:54px;border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;border:2px solid #ffffff66;font-size:10px;font-weight:bold;text-shadow:1px 1px 1px #000}
+.grid-item .count{position:absolute;top:2px;right:4px}
+.grid-item .icon{font-size:18px}
+.grid-item .name{font-size:9px;max-width:48px;overflow:hidden;white-space:nowrap}
+.rarity-summary{margin-top:10px;display:grid;grid-template-columns:repeat(4,1fr);gap:4px;text-align:center;font-size:10px}
+.rarity-badge{padding:4px;border-radius:4px}
+.craft-slots{display:flex;justify-content:center;gap:8px;margin:15px 0}
+.craft-slot{width:50px;height:50px;background:#0003;border:2px dashed #ffffff88;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:20px;cursor:pointer}
+.craft-action{text-align:center;margin-bottom:12px}
+.craft-btn{background:#4caf50;border:2px solid #2e7d32;color:white;font-weight:bold;padding:8px 24px;border-radius:6px;cursor:pointer}
+.gallery-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;max-height:320px;overflow-y:auto;background:#0003;padding:6px;border-radius:6px}
+.mob-cell{width:50px;height:50px;border-radius:4px;display:flex;flex-direction:column;align-items:center;justify-content:center;border:1px solid #0003;font-size:9px;font-weight:bold}
+.mob-icon{width:20px;height:20px;border-radius:50%;margin-bottom:2px}
+button,select{padding:6px 10px;margin:3px;background:#304d3b;color:white;border:1px solid #8cac82;border-radius:4px;cursor:pointer;font-weight:bold}
+button:hover{background:#4c7354}
+#mapInfo{position:fixed;bottom:95px;right:12px;background:#14251de8;padding:8px;border-radius:7px;font-size:11px;z-index:3}
+#miniMap{position:fixed;right:12px;top:125px;width:145px;height:145px;background:#14251ddd;border:2px solid #789b75;border-radius:8px;z-index:3}
+#chat{position:fixed;left:12px;bottom:105px;width:270px;height:220px;z-index:5;background:rgba(16,31,25,.92);border:2px solid #789b75;border-radius:10px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 4px 12px #0006}
+#chatHead{padding:7px 10px;background:#263e35;font-weight:bold;font-size:13px;display:flex;justify-content:space-between;align-items:center}
+#chatLog{flex:1;overflow-y:auto;padding:7px;font-size:12px;line-height:1.4;overflow-wrap:anywhere}
+.chat-line{margin:0 0 5px}
+.chat-name{color:#ffe66a;font-weight:bold}
+#chatForm{display:flex;gap:4px;padding:6px;border-top:1px solid #789b75}
+#chatInput{min-width:0;flex:1;background:#102019;color:white;border:1px solid #789b75;border-radius:5px;padding:7px;font-size:12px}
+#chatForm button{margin:0;padding:6px 9px}
+@media(max-width:600px){
+#chat{width:220px;height:165px;left:6px;bottom:90px}
+
+#miniMap{width:100px;height:100px;top:130px}
+#leader{top:10px;right:10px;min-width:120px;font-size:11px}
+.slot{width:48px;height:52px;font-size:9px}
+#help{font-size:9px;bottom:72px}
+#equipment{bottom:5px}
+}
+</style>
+</head>
+<body>
+<div id="lobby">
+ <div class="lobby-card">
+  <h1 class="lobby-title">🌼 GAME ARENA</h1>
+  <p class="lobby-sub">SẢNH CHÍNH · Chào mừng bạn đến với thế giới Petal</p>
+  <div class="lobby-fields">
+   <input id="playerNameInput" maxlength="18" autocomplete="username" placeholder="Tên người chơi">
+  </div>
+  <button class="lobby-btn play" onclick="enterGame()">▶ CHƠI</button>
+  <button class="lobby-btn" onclick="showMenuDialog('account')">👤 Tài khoản</button>
+  <div class="lobby-grid">
+   <button class="lobby-btn" onclick="showMenuDialog('settings')">⚙️ Cài đặt</button>
+   <button class="lobby-btn" onclick="showMenuDialog('store')">🛒 Cửa hàng</button>
+   <button class="lobby-btn" onclick="showMenuDialog('help')">📘 Hướng dẫn</button>
+   <button class="lobby-btn" onclick="openWindow('bag')">🎒 Túi đồ</button>
+   <button class="lobby-btn" onclick="openWindow('craft')">🔨 Bàn Craft</button>
+   <button class="lobby-btn" onclick="openWindow('stats')">👹 Xem quái</button>
+  </div>
+  <div id="lobbyStatus">Nhập tên người chơi để bắt đầu.</div>
+ </div>
+</div>
+<div id="menuDialog" onclick="if(event.target===this)hideMenuDialog()">
+ <div class="menu-dialog-card"><h2 id="menuDialogTitle"></h2><div id="menuDialogContent"></div><div class="dialog-actions"><button onclick="hideMenuDialog()">Đóng</button></div></div>
+</div>
+
+<canvas id="game"></canvas>
+<div id="deathScreen" style="display:none;position:fixed;inset:0;z-index:40;background:#000b;align-items:center;justify-content:center;flex-direction:column;color:white;text-align:center">
+ <h1 style="color:#ff7777;margin:0 0 12px">BẠN ĐÃ THUA!</h1>
+ <p>Bạn có thể về sảnh rồi chọn Chơi để bắt đầu lại.</p>
+ <button class="lobby-btn play" onclick="returnToLobby()">↩ CHƠI LẠI</button>
+</div>
+
+<div id="leader" class="panel">
+<b>🏆 XẾP HẠNG</b>
+<div>1. Người chơi</div>
+<div>Điểm: <span id="score">0</span></div>
+</div>
+
+<canvas id="miniMap" width="145" height="145"></canvas>
+
+<div id="chat">
+ <div id="chatHead"><span>💬 Khung chat</span><span style="font-size:10px;color:#b9d8b3">Enter để gửi</span></div>
+ <div id="chatLog" aria-live="polite"><div class="chat-line"><span class="chat-name">Hệ thống:</span> Chào mừng bạn!</div></div>
+ <form id="chatForm"><input id="chatInput" maxlength="180" autocomplete="off" placeholder="Nhập tin nhắn..."><button type="submit">Gửi</button></form>
+</div>
+
+<div id="mapInfo">🗺️ Khu vực: Mê cung</div>
+
+
+
+<div id="equipment"></div>
+
+<div id="bag" class="window-pro">
+<div class="header-bar"><span>🎒 Túi Đồ</span><button class="close-btn" onclick="closeWindows()">X</button></div>
+<div id="bagLayout">
+ <div><div id="bagSections"><p style="font-size:12px">Chọn Petal theo từng cấp độ hiếm</p></div><div id="raritySummary" class="rarity-summary"></div></div>
+ <aside id="bagDetails"><b>Chi tiết Petal</b><p style="font-size:12px">Chọn một Petal trong túi đồ để xem thông tin.</p></aside>
+</div>
+</div>
+
+<div id="craft" class="window-pro">
+<div class="header-bar"><span>Craft</span><button onclick="craftSwitch()" style="position:absolute;right:34px;top:0;background:#8b5bd7">Switch</button><button class="close-btn" onclick="closeWindows()">X</button></div>
+<div class="craft-top"><div class="craft-slots" id="craftSlots">
+<div class="craft-slot" onclick="removeFromCraft(0)">+</div><div class="craft-slot" onclick="removeFromCraft(1)">+</div><div class="craft-slot" onclick="removeFromCraft(2)">+</div><div class="craft-slot" onclick="removeFromCraft(3)">+</div><div class="craft-slot" onclick="removeFromCraft(4)">+</div>
+</div><div class="craft-side"><button class="craft-btn" onclick="doCraft()">Craft</button><div class="craft-rate" id="craftRate">20% success rate</div></div></div>
+<div class="craft-help">Combine 5 Petal cùng độ hiếm để nâng cấp<br>Thất bại sẽ mất Petal đã đặt vào bàn.</div>
+<div class="craft-require">Petal trong túi đồ</div><div id="craftBag" class="grid-container"></div>
+</div>
+
+<div id="statistics" class="window-pro">
+<div class="header-bar"><span>📖 Sổ Tay Quái</span><button class="close-btn" onclick="closeWindows()">X</button></div>
+<div id="mobGallery" class="gallery-grid"></div>
+</div>
+
+<div id="admin" class="window-pro">
+<div class="header-bar"><span>👑 BẢNG ADMIN</span><button class="close-btn" onclick="closeWindows()">X</button></div>
+<div style="font-size:12px;color:#c7dfc3;margin-bottom:8px">Các quyền này chỉ áp dụng trong phiên chơi hiện tại.</div>
+<label>🔭 Nhìn xa: <b id="zoomLabel">1.0×</b></label><br><input id="zoomSlider" type="range" min="0.25" max="1" step="0.05" value="1" oninput="setAdminZoom(this.value)" style="width:95%"><br>
+<label>⚡ Tốc độ: <b id="speedLabel">1.0×</b></label><br><input id="speedSlider" type="range" min="1" max="8" step="0.5" value="1" oninput="setAdminSpeed(this.value)" style="width:95%"><br>
+<label>🎯 Tầm tấn công: <b id="rangeLabel">1.0×</b></label><br><input id="rangeSlider" type="range" min="1" max="6" step="0.5" value="1" oninput="setAdminRange(this.value)" style="width:95%"><hr>
+<label>🌸 Số ô Petal: <b id="slotCountLabel">5</b>/10</label><br><input id="slotCountSlider" type="range" min="5" max="10" step="1" value="5" oninput="setPetalSlots(this.value)" style="width:95%"><br><label>🐾 Kích thước Pet: <b id="petSizeLabel">19</b></label><br><input id="petSizeSlider" type="range" min="10" max="45" step="1" value="19" oninput="setPetSize(this.value)" style="width:95%"><hr>
+<button onclick="adminToggle('wallPass')">👻 Đi xuyên tường: <span id="wallPassLabel">Tắt</span></button>
+<button onclick="adminToggle('god')">🛡️ Bất tử: <span id="godLabel">Tắt</span></button>
+<button onclick="adminToggle('oneHit')">💥 One Hit: <span id="oneHitLabel">Tắt</span></button>
+<button onclick="adminToggle('oneHitBoss')">🐲 One Hit trùm: <span id="oneHitBossLabel">Tắt</span></button>
+<button onclick="changeFlowerSize(2)">🌼 Tăng kích thước hoa</button><button onclick="changeFlowerSize(-2)">🌼 Giảm kích thước hoa</button><button onclick="toggleInvisible()">👻 Tàng hình: <span id="invisibleLabel">Tắt</span></button><button onclick="adminToggle('rapidRegen')">⚡ Hồi Petal siêu nhanh: <span id="rapidRegenLabel">Tắt</span></button><hr>
+<label>Chọn quái:</label><br><select id="mobSelect"></select><label>Độ hiếm:</label><br><select id="raritySelect"></select><br>
+<button onclick="adminSpawn()">👹 Tạo quái</button><br><button onclick="adminUnlockAll()">🔓 Unlock tất cả đồ</button><br><label>🌸 Chọn Petal:</label><select id="adminPetalSelect"></select><button onclick="adminDrop()">🌸 Tạo Petal</button><button onclick="player.hp=player.maxHp">❤️ Hồi máu</button><button onclick="mobs=[]">🧹 Xóa quái</button><hr>
+<label>📢 Tin nhắn Admin:</label><br><input id="adminAnnouncementInput" maxlength="180" placeholder="Nhập nội dung..." style="width:68%;padding:7px;box-sizing:border-box"><input id="adminAnnouncementColor" type="color" value="#fff3a6" title="Màu chữ"><button onclick="sendAdminAnnouncement()">Gửi</button><hr><label>🗺️ Dịch chuyển:</label><br><select id="zoneSelect"></select><button onclick="adminTeleport()">Dịch chuyển</button><button onclick="closeWindows()">Đóng</button></div>
+<div id="announcementBanner" style="display:none;position:fixed;z-index:9999;top:18px;left:50%;transform:translateX(-50%);max-width:85vw;background:#182333;color:#fff3a6;border:2px solid #ffd95b;border-radius:12px;padding:14px 22px;font-weight:bold;text-align:center;box-shadow:0 5px 25px #0009"></div>
+
+<script>
+const canvas=document.getElementById("game");
+const ctx=canvas.getContext("2d");
+const mini=document.getElementById("miniMap");
+const mctx=mini.getContext("2d");
+
+function resize(){
+canvas.width=innerWidth;
+canvas.height=innerHeight;
+}
+resize();
+addEventListener("resize",resize);
+
+const rarities=["Thường","Đặc biệt","Hiếm","Cực hiếm","Huyền thoại","Thần thoại","Siêu cấp","Tối thượng"];
+const rarityColors=["#838383","#53b848","#3399ff","#a23bf0","#ffaa00","#f2338c","#ff5500","#e60000"];
+
+const creatures=[
+["Nhện","#a58ad5",24,50,.85],
+["Bọ rùa","#e94c4c",23,40,.95],
+["Rùa","#70ad62",29,90,.5],
+["Bọ cánh cứng","#a58b45",27,75,.65],
+["Ong","#eacb39",20,35,1.2],
+["Bướm","#e28bd7",22,40,1],
+["Kiến","#b86c42",20,35,.95],
+["Bubble","#65d9e8",27,85,0]
+];
+
+const petalTypes=[
+["Basic","#cfd8dc"],
+["Lá gai","#75dc83"],
+["Vuốt nhện","#bd9bfa"],
+["Mai rùa","#d6a36b"],
+["Bọ rùa","#fa6464"],
+["Cánh ong","#f1d34f"],
+["Cánh bướm","#e58bd7"],
+["Răng kiến","#d68b58"],
+["Bong Bóng","#65d9e8"],
+["Trứng","#f3e6bd"],
+["Petal Nhẹ","#fff4a8"],
+["Petal Yin Yang","#eeeeee"]
+];
+
+const player={
+x:0,y:0,r:18,hp:100,maxHp:100,
+name:"Azgr",level:1,xp:0,nextXp:100,
+speed:3.2,kills:0,knockX:0,knockY:0
+};
+
+let mobs=[],drops=[],particles=[],texts=[],keys={};
+let petalPushCooldown=0;
+let movementMode=localStorage.getItem("hornex_movement_mode")||"wasd";
+let mouseWorld={x:0,y:0,active:false};
+let companionPets=[];
+let eggHatchTimer=0;
+let left=false,right=false,god=false,paused=true;
+let gameStarted=false;
+let admin={wallPass:false,oneHit:false,oneHitBoss:false,zoom:1,speed:1,range:1,invisible:false,rapidRegen:false,petSize:19};
+let dashCooldown=0,dashInvuln=0,dashRequested=false,lastMoveX=1,lastMoveY=0;
+let camera={x:0,y:0};
+let spawnTimer=0,healTimer=0,selected=0;
+let bagOpen=false,craftOpen=false,statsOpen=false,adminOpen=false;
+let inventory=[],equipment=Array(5).fill(null);
+let killStats={},craftItems=[];
+
+/* ================================
+   HỆ THỐNG MÊ CUNG & VA CHẠM
+================================ */
+
+const TILE=100;
+const MAZE_W=120;
+const MAZE_H=84;
+let maze=[];
+let mazeRooms=[];
+const WALL_THICKNESS=82;
+const wallSegments=[
+ // Hai vách ngang thẳng, song song và có lối mở lệch nhau như bản phác thảo.
+ [-7500,-1750,3750,-1750], [-3750,1125,7500,1125]
+];
+
+const zones=[
+{name:"Common",x:-5625,y:-3500},{name:"Unusual",x:-1875,y:-3500},{name:"Race",x:1875,y:-3500},{name:"Epic",x:5625,y:-3500},
+{name:"Legendary",x:5625,y:0},{name:"Mythic",x:1875,y:0},{name:"Ultra",x:-1875,y:0},{name:"Super",x:-5625,y:0},
+{name:"Hyper",x:-5625,y:3500},{name:"Omega",x:-1875,y:3500},{name:"Unique",x:1875,y:3500},{name:"Secret",x:5625,y:3500}];
+let roadPoints=[];
+function sampleBezier(p0,p1,p2,p3,steps=90){
+ const out=[];
+ for(let i=0;i<=steps;i++){const t=i/steps,u=1-t;
+  out.push({x:u*u*u*p0[0]+3*u*u*t*p1[0]+3*u*t*t*p2[0]+t*t*t*p3[0],y:u*u*u*p0[1]+3*u*u*t*p1[1]+3*u*t*t*p2[1]+t*t*t*p3[1]});
+ }
+ return out;
+}
+function buildRoadNetwork(){ roadPoints=[]; }
+function generateMaze(){
+ maze=Array.from({length:MAZE_H},(_,y)=>Array.from({length:MAZE_W},(_,x)=>(x===0||y===0||x===MAZE_W-1||y===MAZE_H-1)?1:0));
+ mazeRooms=[];buildRoadNetwork();petalPushCooldown=0;player.x=-5625;player.y=-3500;mobs=[];drops=[];particles=[];texts=[];player.knockX=0;player.knockY=0;
+ // Mỗi khu luôn có đàn quái riêng ngay khi bắt đầu.
+ const zonePopulation=[16,13,11,9,7,6,5,4,3,2,2,1];
+ for(let zi=0;zi<zones.length;zi++) for(let j=0;j<zonePopulation[zi];j++) spawnMob(undefined,undefined,false,zi);
+}
+
+function worldToTileX(x) {
+  return Math.floor(x / TILE) + Math.floor(MAZE_W / 2);
+}
+function worldToTileY(y) {
+  return Math.floor(y / TILE) + Math.floor(MAZE_H / 2);
+}
+
+function pointSegmentDistance(px,py,x1,y1,x2,y2){
+ const dx=x2-x1,dy=y2-y1,len=dx*dx+dy*dy;
+ const t=len?Math.max(0,Math.min(1,((px-x1)*dx+(py-y1)*dy)/len)):0;
+ return Math.hypot(px-(x1+t*dx),py-(y1+t*dy));
+}
+function isWall(x, y) {
+ const left=-7500,right=7500,top=-5250,bottom=5250,half=WALL_THICKNESS/2;
+ if(x<left+half||x>right-half||y<top+half||y>bottom-half) return true;
+ return wallSegments.some(([x1,y1,x2,y2])=>pointSegmentDistance(x,y,x1,y1,x2,y2)<half);
+}
+
+// Kiểm tra cả phần thân hình tròn, dùng cùng hệ tọa độ với bản đồ.
+function circleHitsWall(x, y, r, isPlayer=false) {
+  if (isPlayer && admin.wallPass) return false;
+  const pts=[[0,0],[r,0],[-r,0],[0,r],[0,-r],[r*.7,r*.7],[r*.7,-r*.7],[-r*.7,r*.7],[-r*.7,-r*.7]];
+  return pts.some(([dx,dy])=>isWall(x+dx,y+dy));
+}
+
+// Nếu nhân vật/quái đã lọt vào tường do dữ liệu cũ, tìm ô trống gần nhất.
+function findSafePosition(x, y, r) {
+  if (!circleHitsWall(x, y, r)) return { x, y };
+
+  const originX = worldToTileX(x);
+  const originY = worldToTileY(y);
+  for (let radius = 0; radius < Math.max(MAZE_W, MAZE_H); radius++) {
+    for (let ty = Math.max(0, originY - radius); ty <= Math.min(MAZE_H - 1, originY + radius); ty++) {
+      for (let tx = Math.max(0, originX - radius); tx <= Math.min(MAZE_W - 1, originX + radius); tx++) {
+        if (Math.max(Math.abs(tx - originX), Math.abs(ty - originY)) !== radius) continue;
+        if (maze[ty][tx] !== 0) continue;
+        const px = (tx - Math.floor(MAZE_W / 2) + 0.5) * TILE;
+        const py = (ty - Math.floor(MAZE_H / 2) + 0.5) * TILE;
+        if (!circleHitsWall(px, py, r)) return { x: px, y: py };
+      }
+    }
+  }
+  return { x: 0, y: 0 };
+}
+
+function movePlayer(dx, dy) {
+  if (admin.wallPass) { player.x += dx; player.y += dy; return; }
+  // Tự gỡ nhân vật khỏi tường nếu vị trí hiện tại bị lỗi.
+  if (circleHitsWall(player.x, player.y, player.r, true)) {
+    const safe = findSafePosition(player.x, player.y, player.r);
+    player.x = safe.x;
+    player.y = safe.y;
+    player.knockX = 0;
+    player.knockY = 0;
+  }
+
+  // Chia nhỏ bước đi để không xuyên qua tường ở tốc độ cao.
+  const maxStep = 3;
+  const steps = Math.max(1, Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)) / maxStep));
+  const sx = dx / steps;
+  const sy = dy / steps;
+
+  for (let i = 0; i < steps; i++) {
+    if (!circleHitsWall(player.x + sx, player.y, player.r, true)) player.x += sx;
+    if (!circleHitsWall(player.x, player.y + sy, player.r, true)) player.y += sy;
+  }
+}
+
+function moveMob(m, dx, dy) {
+  // Quái bị giới hạn trong đúng khu được gán, không chạy sang khu khác.
+  const z = zones[m.zoneIndex] || zones[0];
+  const minX = z.x - 1810 + m.r, maxX = z.x + 1810 - m.r;
+  const minY = z.y - 1630 + m.r, maxY = z.y + 1630 - m.r;
+  if (circleHitsWall(m.x, m.y, m.r)) {
+    const safe = findSafePosition(m.x, m.y, m.r);
+    m.x = safe.x;
+    m.y = safe.y;
+    m.angle = rand(0, Math.PI * 2);
+  }
+
+  const maxStep = 3;
+  const steps = Math.max(1, Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)) / maxStep));
+  const sx = dx / steps;
+  const sy = dy / steps;
+
+  for (let i = 0; i < steps; i++) {
+    const nx = Math.max(minX, Math.min(maxX, m.x + sx));
+    const ny = Math.max(minY, Math.min(maxY, m.y + sy));
+    if (nx !== m.x && !circleHitsWall(nx, m.y, m.r)) m.x = nx;
+    else if (Math.abs(sx) > 0.01) m.angle += Math.PI / 2;
+    if (ny !== m.y && !circleHitsWall(m.x, ny, m.r)) m.y = ny;
+    else if (Math.abs(sy) > 0.01) m.angle += Math.PI / 2;
+  }
+}
+
+function drawMaze(){
+ ctx.save();ctx.translate(-camera.x,-camera.y);
+ const left=-7500,top=-5250,right=7500,bottom=5250;
+ ctx.fillStyle="#63b947";ctx.fillRect(left,top,right-left,bottom-top);
+ // Hoa văn cỏ nhẹ, không làm thay đổi vùng di chuyển.
+ ctx.fillStyle="rgba(255,255,255,0.055)";
+ for(let x=left+120;x<right;x+=260) for(let y=top+100;y<bottom;y+=240){ctx.beginPath();ctx.arc(x+((Math.floor(y/240)%2)*70),y,3,0,Math.PI*2);ctx.fill();}
+ // Viền ngoài và các tường đen dày; những khoảng trống là lối nối giữa khu.
+ ctx.strokeStyle="#101313";ctx.lineWidth=WALL_THICKNESS;ctx.lineCap="round";ctx.lineJoin="round";
+ ctx.strokeRect(left,top,right-left,bottom-top);
+ ctx.beginPath();for(const [x1,y1,x2,y2] of wallSegments){ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);}ctx.stroke();
+ // Vạch xanh mảnh chỉ phân định các khu, không cản đường đi.
+ ctx.save();ctx.strokeStyle="#3f9e37";ctx.lineWidth=12;ctx.lineCap="round";
+ for(const x of [-3750,0,3750]){ctx.beginPath();ctx.moveTo(x,-5125);ctx.lineTo(x,-1850);ctx.stroke();ctx.beginPath();ctx.moveTo(x,-1650);ctx.lineTo(x,950);ctx.stroke();ctx.beginPath();ctx.moveTo(x,1350);ctx.lineTo(x,5125);ctx.stroke();}
+ ctx.restore();
+ // Tên khu đặt cân đối theo lưới 4 cột x 3 hàng.
+ for(const z of zones){ctx.textAlign="center";ctx.font="bold 48px Arial";ctx.lineWidth=5;ctx.strokeStyle="#172017";ctx.strokeText(z.name,z.x,z.y);ctx.fillStyle="#f3fff0";ctx.fillText(z.name,z.x,z.y);}
+ ctx.restore();
+}
+function drawMiniMap(){
+ mctx.clearRect(0,0,145,145);mctx.fillStyle="#63b947";mctx.fillRect(0,0,145,145);
+ mctx.strokeStyle="#101313";mctx.lineWidth=2.8;
+ for(const [x1,y1,x2,y2] of wallSegments){mctx.beginPath();mctx.moveTo((x1+7500)/15000*145,(y1+5250)/10500*145);mctx.lineTo((x2+7500)/15000*145,(y2+5250)/10500*145);mctx.stroke();}
+ mctx.strokeRect(0,0,145,145);
+ let px=(player.x+7500)/15000*145,py=(player.y+5250)/10500*145;mctx.fillStyle="#ffe66a";mctx.beginPath();mctx.arc(px,py,3,0,Math.PI*2);mctx.fill();
+}
+
+/* ================================
+   LƯU GAME
+================================ */
+
+const saved=localStorage.getItem("hornexV4_save");
+if(saved){
+try{
+let data=JSON.parse(saved);
+inventory=data.inventory||[];
+equipment=(data.equipment||Array(5).fill(null)).slice(0,5);
+while(equipment.length<5) equipment.push(null);
+player.kills=data.kills||0;
+player.level=data.level||1;
+player.xp=data.xp||0;
+player.nextXp=player.level*100;
+player.maxHp=100+(player.level-1)*15;
+player.hp=player.maxHp;
+killStats=data.killStats||{};
+if(data.movementMode){movementMode=data.movementMode;localStorage.setItem("hornex_movement_mode",movementMode);}
+}catch(e){}
+}
+if(equipment.every(p=>!p)){
+ equipment=Array.from({length:5},()=>({name:"Basic",color:"#cfd8dc",rarity:0}));
+}
+
+function save(){
+localStorage.setItem("hornexV4_save",JSON.stringify({
+inventory,equipment,kills:player.kills,name:player.name,
+level:player.level,xp:player.xp,killStats,movementMode
+}));
+}
+
+function rand(a,b){return Math.random()*(b-a)+a}
+
+function randomRarity(){
+let n=Math.random();
+if(n<.45)return 0;
+if(n<.68)return 1;
+if(n<.83)return 2;
+if(n<.92)return 3;
+if(n<.97)return 4;
+if(n<.99)return 5;
+if(n<.997)return 6;
+return 7;
+}
+
+function addText(txt,x,y,color="white",size=14){
+texts.push({txt,x,y,color,size,life:1,vy:-1});
+}
+
+function addParticle(x,y,color){
+for(let i=0;i<5;i++){
+particles.push({x,y,vx:rand(-2,2),vy:rand(-2,2),size:rand(3,6),color,life:1});
+}
+}
+
+function addXp(amount){
+player.xp+=amount;
+while(player.xp>=player.nextXp){
+player.xp-=player.nextXp;
+player.level++;
+player.nextXp=player.level*100;
+player.maxHp+=15;
+player.hp=player.maxHp;
+player.speed+=.1;
+addText("LÊN CẤP "+player.level+"!",player.x,player.y-30,"#ffe66a",20);
+}
+}
+
+function zoneIndexAt(x,y){
+ const col=Math.max(0,Math.min(3,Math.floor((x+7500)/3750)));
+ const row=Math.max(0,Math.min(2,Math.floor((y+5250)/3500)));
+ return row===1 ? 4+(3-col) : row*4+col;
+}
+function spawnMob(typeIndex,forcedRarity,isBoss=false,forcedZone=null){
+ const zi=forcedZone===null?zoneIndexAt(player.x,player.y):forcedZone;
+ const z=zones[zi]||zones[0];
+ let c=creatures[typeIndex??Math.floor(Math.random()*creatures.length)];
+ // Quái ở khu càng cao càng lớn và khỏe; Common là cấp nhỏ nhất.
+ let rarity=Math.max(0,Math.min(7,forcedRarity??Math.min(7,Math.floor(zi/2)+randomRarity()*0.35|0)));
+ if(isBoss) rarity=Math.max(5,rarity);
+ const zoneScale=1+zi*0.18;
+ let power=(1+rarity*.6)*zoneScale*2.0;
+ // Quái lớn rõ rệt theo từng khu: Common đã dễ nhìn, Secret lớn hơn nhiều.
+ let scale=(2.0+zi*0.27)*(1+rarity*.07);
+ let x,y,tries=0;
+ // Lấy điểm ngẫu nhiên bên trong lòng khu, tránh vùng tường và vùng sát mép.
+ const minX=z.x-1550,maxX=z.x+1550;
+ const minY=z.y-1350,maxY=z.y+1350;
+ do{x=rand(minX,maxX);y=rand(minY,maxY);tries++;}
+ while((isWall(x,y)||Math.hypot(x-player.x,y-player.y)<260)&&tries<500);
+ if(isWall(x,y)||tries>=500) return;
+ mobs.push({x,y,name:isBoss?"TRÙM · "+c[0]:c[0],baseName:c[0],color:isBoss?"#ff684d":c[1],boss:isBoss,
+ r:c[2]*scale*(isBoss?1.65:1),hp:c[3]*power*(isBoss?5:1),maxHp:c[3]*power*(isBoss?5:1),
+ damage:Math.ceil(6*power*(isBoss?1.8:1)),speed:c[4]*(isBoss?.85:1)*(.9+Math.random()*.2),
+ rarity,zoneIndex:zi,angle:rand(0,Math.PI*2),turn:rand(50,150),hitCooldown:0,petalCooldown:{}});
+ if(isBoss)addText("⚠ TRÙM XUẤT HIỆN!",player.x,player.y-60,"#ff684d",24);
+}
+
+function makeDrop(x,y,rarity,mobName=""){
+let p;
+if(mobName==="Bubble")p=petalTypes.find(v=>v[0]==="Bong Bóng");
+else if(mobName==="Bọ cánh cứng")p=petalTypes.find(v=>v[0]==="Trứng");
+else if(mobName==="Bọ rùa" && Math.random()<0.30)p=petalTypes.find(v=>v[0]==="Petal Nhẹ");
+else if(mobName==="Bọ rùa" && Math.random()<0.45)p=petalTypes.find(v=>v[0]==="Petal Yin Yang");
+else p=petalTypes[Math.floor(Math.random()*(petalTypes.length-2))];
+drops.push({x,y,name:p[0],color:p[1],rarity});
+}
+
+function collectDrops(){
+for(let i=drops.length-1;i>=0;i--){
+let d=drops[i];
+if(Math.hypot(player.x-d.x,player.y-d.y)<35){
+let existing=inventory.find(item=>item.name===d.name&&item.rarity===d.rarity);
+if(existing)existing.count=(existing.count||1)+1;
+else inventory.push({name:d.name,color:d.color,rarity:d.rarity,count:1});
+addText("+1 "+d.name,d.x,d.y,rarityColors[d.rarity]);
+drops.splice(i,1);
+save();
+if(bagOpen)drawBag();
+}
+}
+}
+
+/* ================================
+   TÚI ĐỒ
+================================ */
+
+function updateEquipment(){
+let box=document.getElementById("equipment");
+box.innerHTML="";
+equipment.forEach((item,i)=>{
+let el=document.createElement("div");
+el.className="slot"+(selected===i?" active":"");
+if(item){
+el.style.borderColor=rarityColors[item.rarity];
+el.innerHTML=`<div style="font-size:20px;color:${item.color}">✿</div><b>${item.name}</b>`;
+}else el.innerHTML=`<div style="font-size:18px">${i+1}</div>Trống`;
+el.onclick=()=>{selected=i;if(item){unequipSlot(i);}else{updateEquipment();}};
+el.draggable=!!item;
+el.addEventListener("dragstart",e=>{if(!item)return;e.dataTransfer.setData("text/plain",String(i));});
+el.addEventListener("dragover",e=>e.preventDefault());
+el.addEventListener("drop",e=>{e.preventDefault();const from=Number(e.dataTransfer.getData("text/plain"));if(Number.isInteger(from)&&equipment[from]){const tmp=equipment[i];equipment[i]=equipment[from];equipment[from]=tmp;save();updateEquipment();}});
+box.appendChild(el);
+});
+}
+
+let selectedBagIndex=-1;
+function drawBag(){
+ const box=document.getElementById("bagSections");
+ box.innerHTML="";
+ if(inventory.length===0) box.innerHTML='<p style="font-size:12px;color:#cbd8ce">Túi đồ trống</p>';
+ rarities.forEach((rarity,ri)=>{
+  const items=inventory.map((item,index)=>({item,index})).filter(x=>(x.item.rarity||0)===ri);
+  if(!items.length)return;
+  const section=document.createElement('section');section.className='rarity-section';
+  const heading=document.createElement('div');heading.className='rarity-title';heading.style.borderLeftColor=rarityColors[ri];heading.textContent=rarity+' · '+items.reduce((n,x)=>n+(x.item.count||1),0);
+  const grid=document.createElement('div');grid.className='rarity-items';
+  items.forEach(({item,index})=>{
+   const el=document.createElement('div');el.className='grid-item'+(selectedBagIndex===index?' selected':'');
+   el.style.borderColor=rarityColors[ri];
+   el.innerHTML=`<span class="count">x${item.count||1}</span><div class="icon" style="color:${item.color}">✿</div><div class="name">${item.name}</div>`;
+   el.onclick=()=>selectBagPetal(index);grid.appendChild(el);
+  });
+  section.append(heading,grid);box.appendChild(section);
+ });
+ const summary=document.getElementById("raritySummary");summary.innerHTML="";
+ rarities.forEach((r,i)=>{let total=inventory.filter(p=>(p.rarity||0)===i).reduce((n,p)=>n+(p.count||1),0);if(!total)return;let b=document.createElement("div");b.className="rarity-badge";b.style.background=rarityColors[i];b.style.color='#101510';b.innerHTML=total+"<br>"+r;summary.appendChild(b);});
+ if(selectedBagIndex>=inventory.length)selectedBagIndex=-1;
+ renderBagDetails();
+}
+function selectBagPetal(index){equipPetal(index);selectedBagIndex=-1;drawBag();}
+// Kéo Petal từ thanh trang bị thả vào túi đồ để tháo.
+const bagDropTarget=document.getElementById("bagSections");
+bagDropTarget.addEventListener("dragover",e=>e.preventDefault());
+bagDropTarget.addEventListener("drop",e=>{e.preventDefault();const from=Number(e.dataTransfer.getData("text/plain"));if(Number.isInteger(from)&&equipment[from])unequipSlot(from);});
+function renderBagDetails(){
+ const panel=document.getElementById('bagDetails');const item=inventory[selectedBagIndex];
+ if(!item){panel.innerHTML='<b>Chi tiết Petal</b><p style="font-size:12px">Chọn một Petal trong túi đồ để xem thông tin.</p>';return;}
+ panel.innerHTML=`<b>Chi tiết Petal</b><div class="detail-icon" style="color:${item.color}">✿</div><div style="text-align:center;font-weight:bold">${item.name}</div><p style="font-size:12px;text-align:center">Độ hiếm: ${rarities[item.rarity]||'Thường'}<br>Số lượng: ${item.count||1}</p><button onclick="equipSelectedBagPetal()">Trang bị vào ô đang chọn</button>`;
+}
+function equipSelectedBagPetal(){if(selectedBagIndex<0)return;equipPetal(selectedBagIndex);selectedBagIndex=-1;}
+
+function hatchCompanion(){
+ const eggCount=equipment.filter(p=>p&&p.name==="Trứng").length;
+ while(companionPets.length<eggCount){
+  const angle=companionPets.length*2.4;
+  companionPets.push({x:player.x+42*Math.cos(angle),y:player.y+24*Math.sin(angle),r:admin.petSize,hp:180,maxHp:180,attackCooldown:0,hitCooldown:0});
+  addText("🥚 TRỨNG TỰ NỞ THÀNH PET!",player.x,player.y-40,"#ffe6a8",18);
+ }
+ eggHatchTimer=0;
+}
+
+function unequipSlot(slot){const old=equipment[slot];if(!old)return;let existing=inventory.find(p=>p.name===old.name&&p.rarity===old.rarity);if(existing)existing.count++;else inventory.push({...old,count:1});equipment[slot]=null;save();drawBag();updateEquipment();}
+function setPetalSlots(value){const n=Math.max(5,Math.min(10,Number(value)||5));while(equipment.length<n)equipment.push(null);if(equipment.length>n){const removed=equipment.splice(n);removed.filter(Boolean).forEach(p=>{let old=inventory.find(x=>x.name===p.name&&x.rarity===p.rarity);if(old)old.count++;else inventory.push({...p,count:1});});}document.getElementById("slotCountLabel").textContent=n;save();updateEquipment();}
+function equipPetal(index){
+let item=inventory[index];
+if(!item)return;
+let target=equipment.findIndex(p=>!p);if(target<0)target=selected;
+let petalMaxHp=30+item.rarity*15;
+let copy={name:item.name,color:item.color,rarity:item.rarity,hp:petalMaxHp,maxHp:petalMaxHp};
+
+if(item.count>1)item.count--;
+else inventory.splice(index,1);
+
+if(equipment[target]){
+let old=equipment[target];
+let existing=inventory.find(p=>p.name===old.name&&p.rarity===old.rarity);
+if(existing)existing.count++;
+else inventory.push({...old,count:1});
+}
+equipment[target]=copy;
+save();drawBag();updateEquipment();
+}
+
+/* ================================
+   CRAFT
+================================ */
+
+function craftSwitch(){craftItems.reverse();drawCraft();}
+function drawCraft(){
+updateCraftSlotsUI();
+let box=document.getElementById("craftBag");
+box.innerHTML="";
+inventory.forEach((item,i)=>{
+let el=document.createElement("div");
+el.className="grid-item";
+el.style.background=rarityColors[item.rarity];
+el.innerHTML=`<span class="count">x${item.count||1}</span><div class="icon" style="color:${item.color}">✿</div><div class="name">${item.name}</div>`;
+el.onclick=()=>addToCraft(i);
+box.appendChild(el);
+});
+}
+
+function addToCraft(index){
+if(craftItems.length>=5)return;
+let item=inventory[index];
+if(!item)return;
+if(craftItems.length&&craftItems[0].rarity!==item.rarity){
+alert("Phải chọn cùng độ hiếm!");
+return;
+}
+let petalMaxHp=30+item.rarity*15;
+let copy={name:item.name,color:item.color,rarity:item.rarity,hp:petalMaxHp,maxHp:petalMaxHp};
+if(item.count>1)item.count--;
+else inventory.splice(index,1);
+craftItems.push(copy);
+drawCraft();
+save();
+}
+
+function removeFromCraft(index){
+if(!craftItems[index])return;
+let item=craftItems.splice(index,1)[0];
+let old=inventory.find(p=>p.name===item.name&&p.rarity===item.rarity);
+if(old)old.count++;
+else inventory.push({...item,count:1});
+drawCraft();save();
+}
+
+function updateCraftSlotsUI(){
+document.querySelectorAll(".craft-slot").forEach((s,i)=>{
+let item=craftItems[i];
+s.style.background=item?rarityColors[item.rarity]:"#ad7d4a";
+s.innerHTML=item?`<span style="color:${item.color}">✿</span>`:"";
+});
+}
+
+function doCraft(){
+if(craftItems.length!==5){alert("Cần đủ 5 Petal!");return;}
+let rarity=craftItems[0].rarity;
+craftItems=[];
+let next=Math.min(7,rarity+1);
+let p=petalTypes[Math.floor(Math.random()*petalTypes.length)];
+let old=inventory.find(i=>i.name===p[0]&&i.rarity===next);
+if(old)old.count++;
+else inventory.push({name:p[0],color:p[1],rarity:next,count:1});
+save();drawCraft();alert("🎉 Nâng cấp thành công: "+rarities[next]);
+}
+
+/* ================================
+   SỔ TAY QUÁI
+================================ */
+
+function drawMobGallery(){
+let box=document.getElementById("mobGallery");
+box.innerHTML="";
+creatures.forEach(c=>{
+rarities.forEach((r,i)=>{
+let killed=killStats[c[0]+"_"+i]||0;
+let cell=document.createElement("div");
+cell.className="mob-cell";
+cell.style.background=rarityColors[i];
+cell.innerHTML=`<div class="mob-icon" style="background:${c[1]}"></div><span>${c[0]}</span><b>${killed}</b>`;
+box.appendChild(cell);
+});
+});
+}
+
+/* ================================
+   CỬA SỔ
+================================ */
+
+function openWindow(name){
+closeWindows();
+let el=document.getElementById(name==="stats"?"statistics":name);
+el.style.display="block";
+if(name==="bag"){bagOpen=true;drawBag();}
+if(name==="craft"){craftOpen=true;drawCraft();}
+if(name==="stats"){statsOpen=true;drawMobGallery();}
+if(name==="admin")adminOpen=true;
+}
+
+function closeWindows(){
+while(craftItems.length)removeFromCraft(0);
+bagOpen=craftOpen=statsOpen=adminOpen=false;
+["bag","craft","statistics","admin"].forEach(id=>document.getElementById(id).style.display="none");
+}
+
+function enterGame(){
+ const name=document.getElementById("playerNameInput").value.trim();
+ const status=document.getElementById("lobbyStatus");
+ if(!name){status.textContent="Hãy nhập tên người chơi.";return;}
+ localStorage.setItem("hornex_remembered_player_v1",name);
+ player.name=name;
+ const rank=document.querySelector("#leader div");if(rank)rank.textContent="1. "+name;
+ gameStarted=true;paused=false;document.getElementById("lobby").style.display="none";
+ document.getElementById("deathScreen").style.display="none";
+ player.hp=player.maxHp;player.x=-5625;player.y=-3500;player.knockX=player.knockY=0;camera.x=player.x-canvas.width/2;camera.y=player.y-canvas.height/2;
+}
+const rememberedName=localStorage.getItem("hornex_remembered_player_v1");
+if(rememberedName){document.getElementById("playerNameInput").value=rememberedName;document.getElementById("lobbyStatus").textContent="Đã ghi nhớ tên người chơi. Nhấn Chơi để tiếp tục.";}
+function returnToLobby(){
+ gameStarted=false;paused=false;closeWindows();player.hp=player.maxHp;document.getElementById("deathScreen").style.display="none";
+ document.getElementById("lobby").style.display="flex";
+ const remembered=localStorage.getItem("hornex_remembered_player_v1");
+ if(remembered){document.getElementById("playerNameInput").value=remembered;document.getElementById("lobbyStatus").textContent="Đã ghi nhớ tên người chơi. Nhấn Chơi để tiếp tục.";}
+}
+function showMenuDialog(which){
+ const title=document.getElementById("menuDialogTitle"),content=document.getElementById("menuDialogContent");
+ if(which==="account"){
+  title.textContent="👤 Tài khoản";
+  content.innerHTML="<p>Đăng nhập Discord sẽ được bổ sung sau.</p><button type=\"button\" disabled style=\"width:100%;padding:10px;opacity:.7\">Đăng nhập Discord (sắp có)</button>";
+ }else if(which==="settings"){
+  title.textContent="⚙️ Cài đặt";
+  content.innerHTML='<p><b>Kiểu di chuyển</b></p><select id="movementModeSelect" style="width:100%;padding:10px;border-radius:8px;margin-bottom:14px"><option value="wasd">WASD / phím mũi tên</option><option value="mouse">Chuột tự động</option></select><p id="movementModeHint" style="font-size:13px">Dùng WASD hoặc phím mũi tên để di chuyển.</p><hr><p>Điều chỉnh mức thu phóng màn hình:</p><input id="lobbyZoom" type="range" min="0.5" max="1.5" step="0.05" value="1" style="width:100%"><p id="lobbyZoomValue">1.00×</p>';
+  const modeSelect=document.getElementById("movementModeSelect");modeSelect.value=movementMode;
+  const updateModeHint=()=>{movementMode=modeSelect.value;localStorage.setItem("hornex_movement_mode",movementMode);document.getElementById("movementModeHint").textContent=movementMode==="mouse"?"Di chuyển con trỏ quanh nhân vật để hoa tự động đi theo hướng đó. Không cần nhấp chuột.":"Dùng WASD hoặc phím mũi tên để di chuyển.";};
+  modeSelect.addEventListener("change",updateModeHint);updateModeHint();
+  const slider=document.getElementById("lobbyZoom");slider.addEventListener("input",()=>{document.getElementById("lobbyZoomValue").textContent=Number(slider.value).toFixed(2)+"×";admin.zoom=Number(slider.value);});
+ }else if(which==="store"){
+  title.textContent="🛒 Cửa hàng";
+  content.innerHTML='<p>Cửa hàng đang được chuẩn bị. Hiện tại bạn có thể kiếm Petal bằng cách đánh bại quái và dùng Bàn Craft để ghép 5 Petal cùng độ hiếm.</p>';
+ }else{
+  title.textContent="📘 Hướng dẫn";
+  content.innerHTML='<p><b>Di chuyển:</b> Chọn WASD hoặc Chuột tự động trong Cài đặt.</p><p><b>Tấn công:</b> giữ chuột trái. <b>Phòng thủ:</b> giữ chuột phải.</p><p><b>Túi đồ:</b> X · <b>Bàn Craft:</b> C · <b>Sổ quái:</b> V · <b>Tạm dừng:</b> P.</p><p>Đánh bại quái để nhận Petal, sau đó trang bị hoặc ghép chúng.</p>';
+ }
+ document.getElementById("menuDialog").style.display="flex";
+}
+function hideMenuDialog(){document.getElementById("menuDialog").style.display="none";}
+
+function adminToggle(name){
+ if(name==="god")god=!god;else admin[name]=!admin[name];
+ const labels={wallPass:"wallPassLabel",god:"godLabel",oneHit:"oneHitLabel",oneHitBoss:"oneHitBossLabel",rapidRegen:"rapidRegenLabel"};
+ if(labels[name] && document.getElementById(labels[name])) document.getElementById(labels[name]).textContent=(name==="god"?god:admin[name])?"Bật":"Tắt";
+}
+function setAdminZoom(v){
+ admin.zoom=Number(v);
+ document.getElementById("zoomLabel").textContent=(1/admin.zoom).toFixed(1)+"×";
+ camera.x=player.x-canvas.width/2;
+ camera.y=player.y-canvas.height/2;
+}
+function setAdminSpeed(v){admin.speed=Number(v);document.getElementById("speedLabel").textContent=admin.speed.toFixed(1)+"×";}
+function setAdminRange(v){admin.range=Number(v);document.getElementById("rangeLabel").textContent=admin.range.toFixed(1)+"×";}
+function adminTeleport(){const z=zones[Number(document.getElementById("zoneSelect").value)||0];if(z){player.x=z.x;player.y=z.y;}}
+function adminSpawn(){
+spawnMob(Number(mobSelect.value),Number(raritySelect.value));
+}
+function adminDrop(){
+ const i=Number((document.getElementById("adminPetalSelect")||{}).value||0),p=petalTypes[i]||petalTypes[0];
+ drops.push({x:player.x+40,y:player.y,name:p[0],color:p[1],rarity:Number(raritySelect.value)||0});
+}
+
+function adminUnlockAll(){
+ let added=0;
+ petalTypes.forEach(([name,color])=>{
+  rarities.forEach((rarity,index)=>{
+   const existing=inventory.find(item=>item.name===name&&item.rarity===index);
+   if(existing) existing.count=(existing.count||1)+1;
+   else inventory.push({name,color,rarity:index,count:1});
+   added++;
+  });
+ });
+ save();drawBag();
+ const btn=document.querySelector("button[onclick=\"adminUnlockAll()\"]");
+ if(btn){const old=btn.textContent;btn.textContent=`✓ Đã mở khóa ${added} món!`;setTimeout(()=>btn.textContent=old,1800);}
+}
+
+creatures.forEach((c,i)=>{
+let o=document.createElement("option");
+o.value=i;o.textContent=c[0];mobSelect.appendChild(o);
+});
+rarities.forEach((r,i)=>{
+let o=document.createElement("option");
+o.value=i;o.textContent=r;raritySelect.appendChild(o);
+});
+zones.forEach((z,i)=>{let o=document.createElement("option");o.value=i;o.textContent=z.name;zoneSelect.appendChild(o);});
+
+/* ================================
+   ĐIỀU KHIỂN
+================================ */
+
+const chatForm=document.getElementById("chatForm");
+const chatInput=document.getElementById("chatInput");
+const chatLog=document.getElementById("chatLog");
+chatForm.addEventListener("submit",e=>{
+ e.preventDefault();
+ const message=chatInput.value.trim();
+ if(!message)return;
+ const line=document.createElement("div");line.className="chat-line";
+ const name=document.createElement("span");name.className="chat-name";name.textContent=(player.name||"Bạn")+": ";
+ line.append(name,document.createTextNode(message));chatLog.appendChild(line);
+ chatLog.scrollTop=chatLog.scrollHeight;chatInput.value="";
+});
+addEventListener("keydown",e=>{
+if(!gameStarted)return;
+if(document.activeElement===chatInput){if(e.key==="Escape")chatInput.blur();return;}
+let k=e.key.toLowerCase();
+keys[k]=true;
+if(e.repeat)return;
+if(keys["t"]&&keys["n"]){e.preventDefault();adminOpen?closeWindows():openWindow("admin");return;}
+
+if(k==="shift"){
+ const hasBubblePetal=equipment.some(p=>p&&p.name==="Bong Bóng"&&(p.hp??1)>0);
+ if(hasBubblePetal&&petalPushCooldown<=0){
+  let px=lastMoveX,py=lastMoveY;
+  if(!px&&!py){px=1;py=0;}
+  const bubbleCount=equipment.filter(p=>p&&p.name==="Bong Bóng"&&(p.hp??1)>0).length;
+  const pushPower=13*(1+Math.max(0,bubbleCount-1)*0.55);
+  player.knockX+=px*pushPower;player.knockY+=py*pushPower;
+  petalPushCooldown=250;
+  addText("PETAL PUSH!",player.x,player.y-38,"#8deaff",16);
+ }
+ return;
+}
+
+if(k==="p"){paused=!paused;addText(paused?"TẠM DỪNG":"TIẾP TỤC",player.x,player.y-35,"#ffe66a",18);return;}
+if(k===" "||e.code==="Space"){e.preventDefault();return;}
+if("123456".includes(e.key)){
+selected=Number(e.key)-1;updateEquipment();
+}
+if(k==="x")bagOpen?closeWindows():openWindow("bag");
+if(k==="c")craftOpen?closeWindows():openWindow("craft");
+if(k==="v")statsOpen?closeWindows():openWindow("stats");
+});
+addEventListener("keyup",e=>keys[e.key.toLowerCase()]=false);
+
+canvas.addEventListener("mousemove",e=>{
+ const rect=canvas.getBoundingClientRect();
+ const sx=(e.clientX-rect.left)*(canvas.width/rect.width);
+ const sy=(e.clientY-rect.top)*(canvas.height/rect.height);
+ mouseWorld.x=sx+camera.x;mouseWorld.y=sy+camera.y;mouseWorld.active=true;
+});
+canvas.addEventListener("mouseenter",()=>{mouseWorld.active=true;});
+canvas.addEventListener("mouseleave",()=>{mouseWorld.active=false;});
+
+canvas.onmousedown=e=>{
+if(e.button===0)left=true;
+if(e.button===2){
+ right=true;
+ const hasBubblePetal=equipment.some(p=>p&&p.name==="Bong Bóng"&&(p.hp??1)>0);
+ if(gameStarted&&hasBubblePetal&&petalPushCooldown<=0){
+  let px=lastMoveX||1,py=lastMoveY||0;const bubbleCount=equipment.filter(p=>p&&p.name==="Bong Bóng"&&(p.hp??1)>0).length;const pushPower=13*(1+Math.max(0,bubbleCount-1)*0.55);player.knockX+=px*pushPower;player.knockY+=py*pushPower;petalPushCooldown=250;
+  addText("BONG BÓNG PUSH!",player.x,player.y-38,"#8deaff",16);
+ }
+}
+};
+addEventListener("mouseup",e=>{
+if(e.button===0)left=false;
+if(e.button===2)right=false;
+});
+canvas.oncontextmenu=e=>e.preventDefault();
+
+/* ================================
+   CẬP NHẬT GAME
+================================ */
+
+function update(dt){
+let s=dt/16.67;
+dashCooldown=Math.max(0,dashCooldown-dt);
+petalPushCooldown=Math.max(0,petalPushCooldown-dt);
+if(right&&gameStarted&&petalPushCooldown<=0&&equipment.some(p=>p&&p.name==="Bong Bóng"&&(p.hp??1)>0)){const bubbleCount=equipment.filter(p=>p&&p.name==="Bong Bóng"&&(p.hp??1)>0).length;const pushPower=13*(1+Math.max(0,bubbleCount-1)*0.55);player.knockX+=(lastMoveX||1)*pushPower;player.knockY+=(lastMoveY||0)*pushPower;petalPushCooldown=250;}
+dashInvuln=Math.max(0,dashInvuln-dt);
+let dx=0,dy=0;
+
+if(movementMode==="mouse"&&mouseWorld.active){
+ const mx=mouseWorld.x-player.x,my=mouseWorld.y-player.y,md=Math.hypot(mx,my);
+ if(md>12){dx=mx/md;dy=my/md;}
+}else if(movementMode==="wasd"){
+ if(keys.w||keys.arrowup)dy--;
+ if(keys.s||keys.arrowdown)dy++;
+ if(keys.a||keys.arrowleft)dx--;
+ if(keys.d||keys.arrowright)dx++;
+}
+
+if(dx||dy){
+let len=Math.hypot(dx,dy);
+dx/=len;dy/=len;lastMoveX=dx;lastMoveY=dy;
+movePlayer(dx*player.speed*admin.speed*s,dy*player.speed*admin.speed*s);
+}
+dashRequested=false;
+movePlayer(player.knockX*s,player.knockY*s);
+player.knockX*=Math.pow(.82,s);
+player.knockY*=Math.pow(.82,s);
+
+camera.x=player.x-canvas.width/2;
+camera.y=player.y-canvas.height/2;
+
+// Mỗi Egg được trang bị tạo ra một pet; Egg không bị tiêu hao.
+const eggCount=equipment.filter(p=>p&&p.name==="Trứng").length;
+companionPets=companionPets.slice(0,eggCount);
+if(gameStarted&&eggCount>companionPets.length){
+ eggHatchTimer+=dt;
+ if(eggHatchTimer>=3000) hatchCompanion();
+}else{eggHatchTimer=0;}
+
+if(!admin.invisible)for(let petIndex=companionPets.length-1;petIndex>=0;petIndex--){
+ const pet=companionPets[petIndex];
+ const pd=Math.hypot(player.x-pet.x,player.y-pet.y);
+ pet.attackCooldown=Math.max(0,pet.attackCooldown-dt);
+ let target=null,targetD=280;
+ for(const m of mobs){const d=Math.hypot(m.x-pet.x,m.y-pet.y);if(d<targetD){target=m;targetD=d;}}
+ if(target){const a=Math.atan2(target.y-pet.y,target.x-pet.x);if(targetD>target.r+(pet.r||19)+5){pet.x+=Math.cos(a)*2.8*s;pet.y+=Math.sin(a)*2.8*s;}else if(pet.attackCooldown<=0){target.hp-=12;pet.attackCooldown=650;addText("-12",target.x,target.y,"#b8f4ff");}}
+ else {
+  // Đi loanh quanh liên tục trong bán kính 70–125 quanh người chơi.
+  if(!pet.roamUntil||performance.now()>pet.roamUntil||!pet.roamX){const a=Math.random()*Math.PI*2,r=70+Math.random()*55;pet.roamX=player.x+Math.cos(a)*r;pet.roamY=player.y+Math.sin(a)*r;pet.roamUntil=performance.now()+900+Math.random()*1300;}
+  const a=Math.atan2(pet.roamY-pet.y,pet.roamX-pet.x);if(Math.hypot(pet.roamX-pet.x,pet.roamY-pet.y)>8){pet.x+=Math.cos(a)*1.65*s;pet.y+=Math.sin(a)*1.65*s;}
+ }
+ if(pd>220){const a=Math.atan2(player.y-pet.y,player.x-pet.x);pet.x+=Math.cos(a)*Math.min(4.2*s,pd-190);pet.y+=Math.sin(a)*Math.min(4.2*s,pd-190);}
+ // Pet không được chồng lấn/xuyên qua thân quái: đẩy Pet ra sát mép quái.
+ for(const m of mobs){
+  const minD=m.r+(pet.r||19);let dx=pet.x-m.x,dy=pet.y-m.y,d=Math.hypot(dx,dy);
+  if(d<minD){if(d<0.001){dx=1;dy=0;d=1;}pet.x=m.x+dx/d*(minD+0.5);pet.y=m.y+dy/d*(minD+0.5);}
+ }
+ pet.hitCooldown=Math.max(0,pet.hitCooldown-dt);
+ for(const m of mobs){
+  if(Math.hypot(m.x-pet.x,m.y-pet.y)<m.r+(pet.r||19)&&pet.hitCooldown<=0){
+   pet.hp-=Math.max(1,(Number(m.damage)||8)*.35);pet.hitCooldown=700;
+   if(pet.hp<=0){companionPets.splice(petIndex,1);addText("PET CON ĐÃ GỤC",player.x,player.y-45,"#ffaaaa",16);break;}
+  }
+ }
+}
+healTimer+=dt;
+if(healTimer>=3000){
+healTimer=0;
+if(player.hp<player.maxHp)player.hp=Math.min(player.maxHp,player.hp+2);
+}
+
+// Đẩy quái ra khỏi nhau để tránh chồng lên nhau.
+for(let i=0;i<mobs.length;i++)for(let j=i+1;j<mobs.length;j++){
+ const a=mobs[i],b=mobs[j],dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy)||0.001,min=a.r+b.r+2;
+ if(d<min){const push=(min-d)/2,ux=dx/d,uy=dy/d;moveMob(a,-ux*push,-uy*push);moveMob(b,ux*push,uy*push);}
+}
+for(let m of mobs){
+let dist=Math.hypot(player.x-m.x,player.y-m.y);
+if(admin.invisible){
+ // Khi tàng hình, quái không phát hiện, đuổi theo hoặc tấn công người chơi.
+ m.turn-=s; if(m.turn<=0){m.angle=rand(0,Math.PI*2);m.turn=rand(50,150);}
+ moveMob(m,Math.cos(m.angle)*m.speed*s,Math.sin(m.angle)*m.speed*s);
+}else if(m.baseName==="Bubble"){
+ // Bubble đứng yên, không đuổi theo và không tự di chuyển.
+}else if(dist<350){
+let a=Math.atan2(player.y-m.y,player.x-m.x);
+moveMob(m,Math.cos(a)*m.speed*s*1.15,Math.sin(a)*m.speed*s*1.15);
+}else{
+m.turn-=s;
+if(m.turn<=0){m.angle=rand(0,Math.PI*2);m.turn=rand(50,150);}
+moveMob(m,Math.cos(m.angle)*m.speed*s*1.25,Math.sin(m.angle)*m.speed*s*1.25);
+}
+
+if(!admin.invisible&&dist<m.r+player.r&&m.hitCooldown<=0){
+if(!god&&dashInvuln<=0){
+let armor=equipment.filter(p=>p&&p.name==="Mai rùa").length*2;
+let damage=Math.max(1,m.damage-armor);
+player.hp-=damage;
+addText("-"+damage,player.x,player.y-10,"#ff4d4d");
+}
+let a=Math.atan2(player.y-m.y,player.x-m.x);
+player.knockX+=Math.cos(a)*6;
+player.knockY+=Math.sin(a)*6;
+m.hitCooldown=35;
+}
+m.hitCooldown=Math.max(0,m.hitCooldown-s);
+}
+
+let distance=(right?28:left?105:65)*admin.range;
+let active=equipment.map((item,idx)=>({item,idx})).filter(p=>p.item);
+
+// Petal cũ chưa có chỉ số sẽ được khởi tạo. Khi hết máu, Petal biến mất
+// hoàn toàn trong 3 giây rồi xuất hiện lại với đầy máu.
+for(let {item} of active){
+ let maxHp=30+(item.rarity||0)*15;
+ if(typeof item.maxHp!=="number")item.maxHp=maxHp;
+ if(typeof item.hp!=="number")item.hp=item.maxHp;
+ if(item.hp<=0){
+  if(!item.respawnAt)item.respawnAt=performance.now()+(admin.rapidRegen?120:3000);
+  if(performance.now()>=item.respawnAt){
+   item.hp=item.maxHp;
+   delete item.respawnAt;
+  }
+ }
+}
+
+const orbitCenters=active.map(({item},i)=>{const speed=right?2.2:left?1.5:1;const a=performance.now()/400*speed+i*Math.PI*2/active.length+(item.collisionOffset||0);const d=item.name==="Trứng"?Math.max(18,(right?28:left?105:65)*admin.range-18):(right?28:left?105:65)*admin.range;return {item,x:player.x+Math.cos(a)*d,y:player.y+Math.sin(a)*d,r:item.name==="Petal Nhẹ"?13:(item.name==="Trứng"?12:16),a};});
+for(let a=0;a<orbitCenters.length;a++)for(let b=a+1;b<orbitCenters.length;b++){const A=orbitCenters[a],B=orbitCenters[b],dx=B.x-A.x,dy=B.y-A.y,dist=Math.hypot(dx,dy)||0.001,min=A.r+B.r+2;if(dist<min){const sign=Math.atan2(dy,dx);A.item.collisionOffset=(A.item.collisionOffset||0)-0.018;B.item.collisionOffset=(B.item.collisionOffset||0)+0.018;}}
+if(!admin.invisible)for(let i=0;i<active.length;i++){
+let {item,idx}=active[i];
+let speed=right?2.2:left?1.5:1;
+let angle=performance.now()/400*speed+i*Math.PI*2/active.length+(item.collisionOffset||0);
+let petalDistance=item.name==="Trứng"?Math.max(18,distance-18):distance;
+let px=player.x+Math.cos(angle)*petalDistance;
+let py=player.y+Math.sin(angle)*petalDistance;
+
+for(let m of mobs){
+let d=Math.hypot(px-m.x,py-m.y);
+let cd=m.petalCooldown[idx]||0;
+if(d<m.r+12*admin.range&&cd<=0&&(item.hp??30)>0){
+// Va chạm với quái làm Petal mất máu; Petal sẽ tự hồi lại sau đó.
+item.hp=Math.max(0,(item.hp??item.maxHp??30)-8);
+let damage=8+item.rarity*6;
+if(admin.oneHit&&(!m.boss||admin.oneHitBoss))damage=m.hp+999;
+if(left)damage*=1.3;
+if(item.name==="Vuốt nhện"&&Math.random()<.3){
+damage*=2;addText("CRIT!",px,py,"#ffe66a");
+}
+if(item.name==="Bọ rùa")player.hp=Math.min(player.maxHp,player.hp+1);
+m.hp-=damage;
+m.petalCooldown[idx]=20;
+addText("-"+Math.ceil(damage),m.x,m.y,rarityColors[item.rarity]);
+addParticle(px,py,item.color);
+let a=Math.atan2(m.y-player.y,m.x-player.x);
+moveMob(m,Math.cos(a)*(item.name==="Lá gai"?8:4),Math.sin(a)*(item.name==="Lá gai"?8:4));
+}
+}
+}
+
+for(let m of mobs){
+for(let k in m.petalCooldown)m.petalCooldown[k]=Math.max(0,m.petalCooldown[k]-s);
+}
+
+for(let i=mobs.length-1;i>=0;i--){
+let m=mobs[i];
+if(m.hp<=0){
+makeDrop(m.x,m.y,m.boss?Math.max(5,m.rarity):m.rarity,m.baseName||m.name);
+if(m.boss)makeDrop(m.x+25,m.y+15,Math.max(5,m.rarity));
+let key=(m.baseName||m.name)+"_"+m.rarity;
+killStats[key]=(killStats[key]||0)+1;
+player.kills++;
+addXp((20+m.rarity*15)*(m.boss?4:1));
+if(player.kills>0&&player.kills%10===0){spawnMob(undefined,5,true);}
+addParticle(m.x,m.y,m.color);
+mobs.splice(i,1);
+save();
+}
+}
+
+collectDrops();
+
+for(let i=texts.length-1;i>=0;i--){
+let t=texts[i];t.y+=t.vy*s;t.life-=.02*s;
+if(t.life<=0)texts.splice(i,1);
+}
+for(let i=particles.length-1;i>=0;i--){
+let p=particles[i];
+p.x+=p.vx*s;p.y+=p.vy*s;p.life-=.04*s;
+if(p.life<=0)particles.splice(i,1);
+}
+
+spawnTimer-=s;
+if(spawnTimer<=0){
+ const zonePopulation=[16,13,11,9,7,6,5,4,3,2,2,1];
+ for(let zi=0;zi<zones.length;zi++){let count=mobs.filter(m=>m.zoneIndex===zi).length;if(count<zonePopulation[zi])spawnMob(undefined,undefined,false,zi);}
+ spawnTimer=140;
+}
+
+player.hp=Math.max(0,Math.min(player.maxHp,player.hp));
+
+document.getElementById("score").textContent=player.kills*10+player.level*50;
+let remaining=10-(player.kills%10);
+let bossAlive=mobs.some(m=>m.boss);
+}
+
+/* ================================
+   VẼ NHÂN VẬT
+================================ */
+
+function drawFlower(x,y){
+let active=equipment.filter(p=>p);
+let distance=(right?28:left?105:65)*admin.range;
+let rotation=performance.now()/400*(right?2.2:left?1.5:1);
+// Khi có Yin Yang đang trang bị, đảo chiều quay cho TOÀN BỘ Petal.
+const reverseAllPetals=active.some(item=>item.name==="Petal Yin Yang");
+const spinDirection=reverseAllPetals?-1:1;
+if(reverseAllPetals)rotation=-rotation;
+
+// Các Petal được trang bị quay quanh nhân vật; Yin Yang đảo chiều cho tất cả.
+active.forEach((item,i)=>{
+if(admin.invisible)return;
+// Petal đang hồi sinh thì biến mất, không vẽ quanh người chơi.
+if((item.hp??1)<=0)return;
+let yin=item.name==="Petal Yin Yang";
+let a=rotation+i*Math.PI*2/active.length;
+let petalDistance=item.name==="Trứng"?Math.max(18,distance-18):distance;
+if(item.name==="Petal Nhẹ"){
+ for(let j=0;j<5;j++){let aa=a+spinDirection*performance.now()/900+j*Math.PI*2/5;ctx.save();ctx.translate(x+Math.cos(aa)*(petalDistance+8),y+Math.sin(aa)*(petalDistance+8));ctx.rotate(aa);ctx.fillStyle=item.color;ctx.beginPath();ctx.ellipse(0,0,5,8,0,0,Math.PI*2);ctx.fill();ctx.strokeStyle="#e8d96a";ctx.lineWidth=1.5;ctx.stroke();ctx.restore();}
+}else{ctx.save();ctx.translate(x+Math.cos(a)*petalDistance,y+Math.sin(a)*petalDistance);ctx.rotate(a);ctx.fillStyle=item.color;ctx.beginPath();ctx.ellipse(0,0,item.name==="Trứng"?10:15,item.name==="Trứng"?13:15,0,0,Math.PI*2);ctx.fill();ctx.strokeStyle=rarityColors[item.rarity];ctx.lineWidth=2.5;ctx.stroke();if(yin){ctx.fillStyle="#252525";ctx.beginPath();ctx.arc(0,0,7,0,Math.PI*2);ctx.fill();ctx.fillStyle="#fff";ctx.beginPath();ctx.arc(0,-3,2,0,Math.PI*2);ctx.fill();ctx.fillStyle="#111";ctx.beginPath();ctx.arc(0,3,2,0,Math.PI*2);ctx.fill();}ctx.restore();}
+});
+
+// Các pet nở ra tương ứng với số Egg đã trang bị.
+for(const pet of companionPets){
+ if(admin.invisible||pet.hp<=0)continue;
+ const cx=pet.x-camera.x,cy=pet.y-camera.y;
+ ctx.save();ctx.fillStyle="#b8edff";ctx.beginPath();ctx.arc(cx,cy,pet.r||19,0,Math.PI*2);ctx.fill();ctx.strokeStyle="#5b9eb0";ctx.lineWidth=2;ctx.stroke();
+ ctx.fillStyle="#20343a";ctx.beginPath();ctx.arc(cx-6,cy-3,2.4,0,Math.PI*2);ctx.arc(cx+6,cy-3,2.4,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle="#263238";ctx.fillRect(cx-(pet.r||19)-2,cy-(pet.r||19)-10,(pet.r||19)*2+4,5);ctx.fillStyle="#7fe6a0";ctx.fillRect(cx-(pet.r||19)-2,cy-(pet.r||19)-10,((pet.r||19)*2+4)*Math.max(0,pet.hp/pet.maxHp),5);ctx.restore();
+}
+
+// Bông hoa có khuôn mặt cười: chỉ thay phần hình nhân vật trung tâm.
+const faceR=player.r+1;
+ctx.save();ctx.globalAlpha=admin.invisible?0:1;
+ctx.fillStyle="#ffe66a";
+ctx.beginPath();ctx.arc(x,y,faceR,0,Math.PI*2);ctx.fill();
+ctx.strokeStyle="#c5a83c";ctx.lineWidth=2.5;ctx.stroke();
+// Biểu cảm: tấn công tức giận (>:(), phòng thủ buồn (:().
+const attacking = left;
+const defending = right && !attacking;
+for(const ex of [-6,6]){
+ ctx.fillStyle="#202027";
+ ctx.beginPath();
+ if(attacking){
+   // Mắt nheo và chân mày chúc xuống ở giữa: tức giận.
+   ctx.ellipse(x+ex,y-3,3.2,5.2,0,0,Math.PI*2);
+ } else {
+   // Mắt dịu hơn khi buồn.
+   ctx.ellipse(x+ex,y-3,3.0,5.8,0,0,Math.PI*2);
+ }
+ ctx.fill();
+ ctx.fillStyle="#fff";ctx.beginPath();ctx.arc(x+ex,y-1,1.4,0,Math.PI*2);ctx.fill();
+ // Chân mày giúp phân biệt rõ hai trạng thái.
+ ctx.strokeStyle="#202027";ctx.lineWidth=2.8;ctx.lineCap="round";
+ ctx.beginPath();
+ if(attacking){
+   ctx.moveTo(x+ex-4,y-12+(ex<0?0:3));
+   ctx.lineTo(x+ex+4,y-12+(ex<0?3:0));
+ } else if(defending){
+   // Đầu chân mày hơi nhô lên, tạo vẻ buồn.
+   ctx.moveTo(x+ex-4,y-12+(ex<0?3:0));
+   ctx.lineTo(x+ex+4,y-12+(ex<0?0:3));
+ }
+ if(attacking||defending) ctx.stroke();
+}
+ctx.strokeStyle="#202027";ctx.lineWidth=2.4;ctx.lineCap="round";
+ctx.beginPath();
+if(attacking){
+ // Miệng trễ xuống, nét mạnh hơn khi tức giận.
+ ctx.arc(x,y+7,7,Math.PI+0.18,Math.PI*2-0.18);
+} else if(defending){
+ // Miệng trễ xuống nhẹ: buồn.
+ ctx.arc(x,y+6,5.5,Math.PI+0.35,Math.PI*2-0.35);
+} else {
+ // Bình thường: nụ cười nhẹ.
+ ctx.arc(x,y+2,7,0.22,Math.PI-0.22);
+}
+ctx.stroke();
+
+// Tên, thanh máu và cấp độ nằm ngay dưới bông hoa.
+ctx.textAlign="center";ctx.lineJoin="round";
+ctx.font="bold 15px Arial";ctx.lineWidth=3.5;ctx.strokeStyle="#172017";
+ctx.strokeText(player.name||"Azgr",x,y+faceR+25);
+ctx.fillStyle="#fff";ctx.fillText(player.name||"Azgr",x,y+faceR+25);
+const bw=76,bh=7,bx=x-bw/2,by=y+faceR+30;
+ctx.fillStyle="#172017";ctx.fillRect(bx-1,by-1,bw+2,bh+2);
+ctx.fillStyle="#404040";ctx.fillRect(bx,by,bw,bh);
+ctx.fillStyle="#39e65b";ctx.fillRect(bx,by,bw*Math.max(0,Math.min(1,player.hp/player.maxHp)),bh);
+ctx.font="bold 13px Arial";ctx.lineWidth=3;ctx.strokeStyle="#17142b";
+ctx.strokeText(`[Lv. ${player.level}]`,x,by+22);
+ctx.fillStyle="#8c78ff";ctx.fillText(`[Lv. ${player.level}]`,x,by+22);
+ctx.restore();
+}
+function drawBeetleSprite(x,y,r){
+ // Sprite Beetle 2D: thân chéo, hai sừng cong ngược, mai có gờ thẳng.
+ ctx.save();
+ ctx.translate(x,y);
+ const scale=Math.max(0.28,Math.min(0.62,r/76));
+ ctx.scale(scale,scale);
+ ctx.rotate(-0.48);
+ const dark="#29202f", shell="#7542a0", body="#b58bd0";
+ ctx.lineCap="round";ctx.lineJoin="round";
+ // Sáu chân nhỏ hai bên.
+ ctx.strokeStyle=dark;ctx.lineWidth=6;
+ for(const side of [-1,1]) for(let i=0;i<3;i++){
+  const yy=-35+i*35;
+  ctx.beginPath();ctx.moveTo(side*25,yy);ctx.lineTo(side*48,yy+15);ctx.lineTo(side*58,yy+30);ctx.stroke();
+ }
+ // Thân và mai.
+ ctx.fillStyle=body;ctx.beginPath();ctx.ellipse(0,0,43,72,0,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle=shell;ctx.strokeStyle=dark;ctx.lineWidth=5;
+ ctx.beginPath();ctx.ellipse(0,0,48,76,0,0,Math.PI*2);ctx.fill();ctx.stroke();
+ // Các đốm trên mai.
+ ctx.fillStyle="#4b286b";
+ for(const [sx,sy] of [[-22,-38],[20,-35],[-28,0],[25,5],[-18,40],[17,42]]){
+  ctx.beginPath();ctx.arc(sx,sy,7,0,Math.PI*2);ctx.fill();
+ }
+ // Gờ thẳng chạy chéo trên mai.
+ ctx.strokeStyle=dark;ctx.lineWidth=8;ctx.lineCap="round";
+ ctx.beginPath();ctx.moveTo(-43,-72);ctx.lineTo(42,73);ctx.stroke();
+ // Đầu và hai sừng cong ngược.
+ ctx.fillStyle=body;ctx.strokeStyle=dark;ctx.lineWidth=5;
+ ctx.beginPath();ctx.arc(0,-76,24,0,Math.PI*2);ctx.fill();ctx.stroke();
+ ctx.strokeStyle=dark;ctx.lineWidth=8;
+ for(const side of [-1,1]){
+  ctx.beginPath();ctx.moveTo(side*10,-91);
+  ctx.quadraticCurveTo(side*30,-125,side*15,-155);ctx.stroke();
+ }
+ ctx.restore();
+}
+
+function drawCreatureSprite(type,x,y,r,color){
+ const k=Math.max(.45,Math.min(1.25,r/28));
+ ctx.save();ctx.translate(x,y);ctx.scale(k,k);ctx.lineCap='round';ctx.lineJoin='round';
+ const ink='#29202f';
+ function ellipse(px,py,rx,ry,fill,stroke=ink,lw=2.5){ctx.fillStyle=fill;ctx.strokeStyle=stroke;ctx.lineWidth=lw;ctx.beginPath();ctx.ellipse(px,py,rx,ry,0,0,Math.PI*2);ctx.fill();ctx.stroke();}
+ function leg(ax,ay,bx,by,cx,cy,w=3){ctx.strokeStyle=ink;ctx.lineWidth=w;ctx.beginPath();ctx.moveTo(ax,ay);ctx.lineTo(bx,by);ctx.lineTo(cx,cy);ctx.stroke();}
+ if(type==='Nhện'){
+  for(let side of [-1,1])for(let i=0;i<4;i++){let yy=-13+i*9;leg(side*9,yy,side*23,yy-8+(i%2)*7,side*31,yy+3,3.5);}
+  ellipse(0,-5,12,12,'#8061b0');ellipse(0,10,10,13,'#b69be0');
+  ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(-4,-8,3,0,7);ctx.arc(4,-8,3,0,7);ctx.fill();
+  ctx.fillStyle=ink;ctx.beginPath();ctx.arc(-4,-8,1.4,0,7);ctx.arc(4,-8,1.4,0,7);ctx.fill();
+ }else if(type==='Bọ rùa'){
+  ellipse(0,1,23,20,'#d93f45',ink,3);ctx.strokeStyle='#351d2b';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(0,-18);ctx.lineTo(0,20);ctx.stroke();
+  ctx.fillStyle='#321d2b';for(const [a,b] of [[-11,-7],[10,-8],[-13,7],[12,8]]){ctx.beginPath();ctx.arc(a,b,3.3,0,7);ctx.fill();}
+  ellipse(0,-18,10,8,'#e9c94a');
+  for(let side of [-1,1])for(let i=0;i<3;i++)leg(side*15,-4+i*8,side*23,-1+i*8,side*27,5+i*8,2.5);
+ }else if(type==='Rùa'){
+  for(let side of [-1,1]){ellipse(side*16,13,6,8,'#8dbb69');ellipse(side*16,-11,6,8,'#8dbb69');}
+  ellipse(0,1,25,20,'#98704d',ink,3);ellipse(0,1,18,14,'#c79a62','#65452f',2);
+  ctx.strokeStyle='#65452f';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-16,1);ctx.lineTo(16,1);ctx.moveTo(0,-12);ctx.lineTo(0,14);ctx.stroke();
+  ellipse(0,-22,10,9,'#83b966');ctx.fillStyle=ink;ctx.beginPath();ctx.arc(-3,-24,1.5,0,7);ctx.arc(3,-24,1.5,0,7);ctx.fill();
+ }else if(type==='Ong'){
+  ellipse(-8,-14,8,12,'#d9f5ff','#527a8a',2);ellipse(8,-14,8,12,'#d9f5ff','#527a8a',2);
+  ellipse(0,2,17,20,'#f1c83e',ink,3);ctx.strokeStyle='#49372b';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(-12,-7);ctx.lineTo(12,-7);ctx.moveTo(-15,4);ctx.lineTo(15,4);ctx.moveTo(-10,15);ctx.lineTo(10,15);ctx.stroke();
+  ellipse(0,-19,11,10,'#f4d24b');ctx.fillStyle=ink;ctx.beginPath();ctx.arc(-4,-21,1.8,0,7);ctx.arc(4,-21,1.8,0,7);ctx.fill();
+  ctx.strokeStyle=ink;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-5,-28);ctx.quadraticCurveTo(-12,-39,-15,-33);ctx.moveTo(5,-28);ctx.quadraticCurveTo(12,-39,15,-33);ctx.stroke();
+ }else if(type==='Bướm'){
+  ellipse(-15,-9,14,17,'#e58bd7','#653b70',2.5);ellipse(15,-9,14,17,'#e58bd7','#653b70',2.5);
+  ellipse(-12,11,10,12,'#bd79d8','#653b70',2);ellipse(12,11,10,12,'#bd79d8','#653b70',2);
+  ellipse(0,0,5,19,'#7650a0');ellipse(0,-17,6,6,'#7650a0');
+  ctx.strokeStyle=ink;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-2,-21);ctx.quadraticCurveTo(-10,-32,-13,-28);ctx.moveTo(2,-21);ctx.quadraticCurveTo(10,-32,13,-28);ctx.stroke();
+  ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(-15,-9,4,0,7);ctx.arc(15,-9,4,0,7);ctx.fill();
+ }else if(type==='Kiến'){
+  for(let side of [-1,1])for(let i=0;i<3;i++)leg(side*5,-2+i*7,side*17,-8+i*8,side*23,0+i*9,3);
+  ellipse(-13,0,9,9,'#9b4e2e');ellipse(0,-3,8,8,'#bd7043');ellipse(14,-5,10,9,'#a85b36');
+  ctx.strokeStyle=ink;ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(12,-13);ctx.quadraticCurveTo(7,-27,1,-25);ctx.moveTo(17,-13);ctx.quadraticCurveTo(22,-27,28,-24);ctx.stroke();
+  ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(11,-8,2.5,0,7);ctx.arc(18,-8,2.5,0,7);ctx.fill();
+ }else if(type==='Bubble'){
+  const grad=ctx.createRadialGradient(-9,-12,2,0,0,29);grad.addColorStop(0,'#ffffff');grad.addColorStop(.25,'#b9f8ff');grad.addColorStop(1,'#43b9d4');
+  ellipse(0,0,25,25,grad,'#277f9b',3);ellipse(-8,-9,6,4,'#ffffff','#ffffff',1);
+  ctx.fillStyle='#174b60';ctx.beginPath();ctx.arc(-7,2,2.5,0,7);ctx.arc(7,2,2.5,0,7);ctx.fill();
+  ctx.strokeStyle='#174b60';ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,5,6,.2,Math.PI-.2);ctx.stroke();
+  for(const [bx,by,br] of [[20,-20,4],[-22,15,3],[18,22,2]]){ctx.strokeStyle='#aaf5ff';ctx.lineWidth=2;ctx.beginPath();ctx.arc(bx,by,br,0,7);ctx.stroke();}
+ }
+ ctx.restore();
+}
+
+function drawMob(m){
+ let x=m.x-camera.x,y=m.y-camera.y;
+ const type=m.baseName||m.name.replace(/^TRÙM · /,'');
+ if(type==='Bọ cánh cứng') drawBeetleSprite(x,y,m.r);
+ else drawCreatureSprite(type,x,y,m.r,m.color);
+ // Viền cấp độ và hiệu ứng trùm vẫn dùng hệ thống cũ.
+ if(m.boss){ctx.strokeStyle='#ffb199';ctx.lineWidth=3;ctx.beginPath();ctx.arc(x,y,m.r+7,0,Math.PI*2);ctx.stroke();}
+ ctx.textAlign='center';ctx.font='bold 12px Arial';ctx.fillStyle=m.boss?'#ffb199':'white';
+ ctx.fillText(m.name,x,y-m.r-22);
+ ctx.fillStyle=rarityColors[m.rarity];ctx.font='11px Arial';ctx.fillText(rarities[m.rarity],x,y-m.r-10);
+ ctx.fillStyle='#0008';let barW=m.boss?70:40;ctx.fillRect(x-barW/2,y-m.r-6,barW,5);
+ ctx.fillStyle=m.boss?'#ff684d':'#65ed80';ctx.fillRect(x-barW/2,y-m.r-6,Math.max(0,barW*m.hp/m.maxHp),5);
+}
+
+/* ================================
+   VẼ GAME
+================================ */
+
+function draw(){
+ // Tô nền ở tọa độ màn hình trước khi áp dụng Zoom và camera.
+ ctx.save();
+ ctx.setTransform(1,0,0,1,0,0);
+ ctx.fillStyle="#08090b";
+ ctx.fillRect(0,0,canvas.width,canvas.height);
+ ctx.restore();
+ctx.save();ctx.translate(canvas.width/2,canvas.height/2);ctx.scale(admin.zoom,admin.zoom);ctx.translate(-canvas.width/2,-canvas.height/2);
+drawMaze();
+
+for(let p of particles){
+ctx.fillStyle=p.color;
+ctx.globalAlpha=p.life;
+ctx.beginPath();
+ctx.arc(p.x-camera.x,p.y-camera.y,p.size,0,Math.PI*2);
+ctx.fill();
+ctx.globalAlpha=1;
+}
+
+drops.forEach(d=>{
+let x=d.x-camera.x,y=d.y-camera.y;
+ctx.fillStyle=d.color;
+ctx.beginPath();ctx.arc(x,y,10,0,Math.PI*2);ctx.fill();
+ctx.strokeStyle=rarityColors[d.rarity];ctx.lineWidth=3;ctx.stroke();
+ctx.fillStyle="white";ctx.font="11px Arial";ctx.textAlign="center";
+ctx.fillText(d.name,x,y-14);
+});
+
+mobs.forEach(drawMob);
+drawFlower(canvas.width/2,canvas.height/2);
+
+for(let t of texts){
+ctx.fillStyle=t.color;
+ctx.globalAlpha=t.life;
+ctx.font=`bold ${t.size}px Arial`;
+ctx.textAlign="center";
+ctx.fillText(t.txt,t.x-camera.x,t.y-camera.y);
+ctx.globalAlpha=1;
+}
+
+if(right){
+ctx.strokeStyle="#8ceaff99";
+ctx.lineWidth=3;
+ctx.beginPath();
+ctx.arc(canvas.width/2,canvas.height/2,32,0,Math.PI*2);
+ctx.stroke();
+}
+
+ctx.restore();
+drawMiniMap();
+
+if(paused&&player.hp>0){
+ctx.fillStyle="#0009";ctx.fillRect(0,0,canvas.width,canvas.height);
+ctx.fillStyle="#ffe66a";ctx.textAlign="center";ctx.font="bold 42px Arial";ctx.fillText("TẠM DỪNG",canvas.width/2,canvas.height/2);
+ctx.fillStyle="white";ctx.font="18px Arial";ctx.fillText("Nhấn P để tiếp tục",canvas.width/2,canvas.height/2+36);
+}
+
+document.getElementById("deathScreen").style.display=player.hp<=0?"flex":"none";
+}
+
+let lastTime=performance.now();
+function loop(now){
+let dt=Math.min(now-lastTime,40);
+lastTime=now;
+if(gameStarted&&player.hp>0&&!paused)update(dt);
+draw();
+requestAnimationFrame(loop);
+}
+
+generateMaze();
+// Bảo đảm vị trí khởi đầu nằm trong ô trống theo đúng hệ tọa độ bản đồ.
+if (circleHitsWall(player.x, player.y, player.r, true)) {
+  const safe = findSafePosition(player.x, player.y, player.r);
+  player.x = safe.x;
+  player.y = safe.y;
+}
+updateEquipment();
+if(document.getElementById("petSizeSlider")){document.getElementById("petSizeSlider").value=admin.petSize;document.getElementById("petSizeLabel").textContent=admin.petSize;}
+if(document.getElementById("slotCountSlider")){document.getElementById("slotCountSlider").value=equipment.length;document.getElementById("slotCountLabel").textContent=equipment.length;}
+
+function setPetSize(value){admin.petSize=Math.max(10,Math.min(45,Number(value)||19));for(const pet of companionPets)pet.r=admin.petSize;const label=document.getElementById("petSizeLabel");if(label)label.textContent=admin.petSize;}
+function changeFlowerSize(delta){player.r=Math.max(8,Math.min(60,player.r+delta));}
+function toggleInvisible(){admin.invisible=!admin.invisible;const el=document.getElementById("invisibleLabel");if(el)el.textContent=admin.invisible?"Bật":"Tắt";}
+function sendAdminAnnouncement(){
+ const input=document.getElementById("adminAnnouncementInput");if(!input)return;const message=input.value.trim();if(!message)return;
+ const banner=document.getElementById("announcementBanner");banner.textContent=message;banner.style.color=(document.getElementById("adminAnnouncementColor")||{}).value||"#fff3a6";banner.style.display="block";clearTimeout(window.hornexAnnouncementTimer);window.hornexAnnouncementTimer=setTimeout(()=>banner.style.display="none",8000);input.value="";
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
